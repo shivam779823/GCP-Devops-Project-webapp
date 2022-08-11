@@ -1,0 +1,59 @@
+steps:
+
+#login to dockerHub
+- name: 'gcr.io/cloud-builders/docker'
+  entrypoint: 'bash'
+  args: ['-c', 'docker login --username=$$USERNAME --password=$$PASSWORD']
+  secretEnv: ['USERNAME', 'PASSWORD']
+
+#Build Image
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build','-t','shiva9921/webapp','.']  
+  
+# - name: 'gcr.io/cloud-builders/docker'
+#   entrypoint: 'bash'
+#   args: ['-c', 'docker push $$USERNAME/REPOSITORY:TAG']
+#   secretEnv: ['USERNAME']
+
+
+#Push Image
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push','shiva9921/webapp']
+
+#Apply Deployment files
+
+- name: 'gcr.io/cloud-builders/kubectl'
+  args: ['apply', '-f', 'k8s/']
+  env:
+  - 'CLOUDSDK_COMPUTE_ZONE=${_ZONE}'
+  - 'CLOUDSDK_CONTAINER_CLUSTER=${_GKE_CLUSTER}'
+
+#Update image on GKE
+
+# - name: 'gcr.io/cloud-builders/kubectl'
+#   args:
+#   - 'set'
+#   - 'image'
+#   - 'deployment/${_DEPLOYMENTNAME}'
+#   - '${_CONTAINERNAME}=gcr.io/${_PROJECT}/${_CONTAINERNAME}:${_VERSION}'
+#   env:
+#   - 'CLOUDSDK_COMPUTE_ZONE=${_ZONE}'
+#   - 'CLOUDSDK_CONTAINER_CLUSTER=${_GKE_CLUSTER}'
+
+
+substitutions:
+    #GCP Specific configuration. 
+    # _PROJECT: qwiklabs-gcp-03-04950356fca2
+    _ZONE: us-central1-a
+    _GKE_CLUSTER: webapp
+    
+    #Repository Specific configuration. DevOps can change this settings
+    # _DEPLOYMENTNAME: web-hello
+   
+
+availableSecrets:
+   secretManager:
+   - versionName: projects/{_PROJECT}/secrets/DOCKER_PASSWORD_SECRET_NAME/versions/latest
+     env: 'PASSWORD'
+   - versionName: projects/{_PROJECT}/secrets/DOCKER_USERNAME_SECRET_NAME/versions/latest
+     env: 'USERNAME'
